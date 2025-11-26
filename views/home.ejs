@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomePage</title>
+    <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+    <h>Welcome to homepage</h>
+    <div class="container">
+        <div class="navbar">
+            <nav>
+                <ul>
+                    <% if(user) { %>
+                        <li><a href="/profile">Profile</a></li>
+                        <li><a href="/logout">Logout</a></li>
+                    <% } else { %>
+                        <li><a href="/register">Register</a></li>
+                        <li><a href="/login">Login</a></li>
+                    <% } %>
+                </ul>
+            </nav>
+        </div>
+    </div>
+    <% if(user) { %>
+    <p>Hello <%= user.username %></p>
+    <% } %>
+    
+</body>
+</html>
