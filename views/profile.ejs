@@ -7,53 +7,62 @@
     <link rel="stylesheet" href="/css/register.css">
 </head>
 <body>
-    <h>Welcome to register page</h>
-    <form action="/register" method="POST" class="auth-form">
-        <div class="form-group">
-            <label for="fullname">Full name:</label>
-            <input type="text" id="fullname" name="fullname" required>
-        </div>
-        <div class="form-group">
-            <label for="email">Email:</label>
-            <input type="email" id="email" name="email" required>
-        </div>
-        
-            <label for="sex">Sex:</label>
-            <select id="sex" name="sex" required>
-                <option value="">-- Select --</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-            </select>
-        <div class="form-group">
-            <label for="phonenum">Phone number:</label>
-            <input type="tel" id="phonenum" name="phonenum" pattern="[0-9]{9,15}" required>
-        </div>
-        <div class="form-group">
-            <label for="dob">Date of birth:</label>
-            <input type="date" id="dob" name="dob" required>
-        </div>
-        <div class="form-group">
-            <label for="password">Password:</label>
-            <input type="password" id="password" name="password" required>
-        </div>
-        <div class="form-group">
-            <label for="cfmpassword">Password:</label>
-            <input type="password" id="cfmpassword" name="cfmpassword" required>
-        </div>
-        <button class="btn" type="submit">Register</button>
-    </form>
+    <h1>Welcome to Profile page</h1>
+    
+    <% errors.forEach(error => { %>
+        <p class="error"><%= error %></p>
+    <% }); %>
+
+    <% if (userData) { %>
+        <form action="/user/update" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="fullname">Full name:</label>
+                <input type="text" id="fullname" name="fullname" value="<%= userData.Fullname %>" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" value="<%= userData.Email %>" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="sex">Sex:</label>
+                <select id="sex" name="sex" required>
+                    <option value="">-- Select --</option>
+                    <option value="Male" <% if (userData.Sex === 'Male') { %>selected<% } %>>Male</option>
+                    <option value="Female" <% if (userData.Sex === 'Female') { %>selected<% } %>>Female</option>
+                    <option value="Male" <% if (userData.Sex === 'Other') { %>selected<% } %>>Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="phonenum">Phone number:</label>
+                <input type="tel" id="phonenum" name="phonenum" pattern="0[0-9]{9}" value="<%= userData.PhoneNumber %>" required>
+            </div>
+            <div class="form-group">
+                <label for="dob">Date of birth:</label>
+                <input type="date" id="dob" name="dob" value="<%= userData.DoB.toISOString().split('T')[0] %>" required>
+            </div>
+            <button class="btn" type="submit">Save Change</button>
+        </form>
+    <% } %>
+    <button class="btn" onclick="deleteAccount()">Delete Account</button>
     <a href="/">Back</a>
     <script>
-        function validateForm() {
-            const pw = document.getElementById("password").value;
-            const cpw = document.getElementById("confirm_password").value;
-
-            if (pw !== cpw) {
-                alert("Password and Confirm Password do not match!");
-                return false; // stop form submit
+        function deleteAccount() {
+            if (confirm('Are you sure you want to delete your account?')) {
+                fetch('/user/delete', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then((response) => {
+                    if (response.ok){
+                        alert("Account deleted successfully");
+                        window.location.href = '/';
+                    }
+                       
+                })
             }
-
-            return true;
         }
     </script>
 </body>

@@ -8,6 +8,9 @@
 </head>
 <body>
     <h>Welcome to register page</h>
+    <% errors.forEach(error => { %>
+        <div class="error"><%= error %></div>
+    <% }) %>
     <form action="/register" method="POST" class="auth-form">
         <div class="form-group">
             <label for="fullname">Full name:</label>
@@ -23,6 +26,7 @@
                 <option value="">-- Select --</option>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
+                <option value="other">Other</option>
             </select>
         <div class="form-group">
             <label for="phonenum">Phone number:</label>
