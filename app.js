@@ -9,7 +9,7 @@ const app = express()
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "CptDuck247",
+  password: "",
   database: "btl2_db",
 });
 app.set("view engine", "ejs")
