@@ -182,4 +182,120 @@ app.delete("/user/delete", async (req, res) => {
     }
 })
 
+// ============================================================
+// PHẦN 3.2: GIAO DIỆN DANH SÁCH SẢN PHẨM (Tìm kiếm & Xóa)
+// ============================================================
+
+// GET: Hiển thị giao diện và danh sách tìm kiếm
+app.get("/products/underperforming", async (req, res) => {
+    // 1. Kiểm tra đăng nhập (nếu cần bảo mật)
+    if (!res.locals.user) {
+        return res.redirect("/login");
+    }
+
+    // 2. Lấy tham số từ URL (Query String)
+    // Mặc định: minCancel = 0, maxRate = 5.0 nếu người dùng chưa nhập
+    const minCancel = req.query.minCancel || 0;
+    const maxRate = req.query.maxRate || 5.0;
+    
+    let productList = [];
+    let errors = [];
+
+    try {
+        // 3. Gọi Stored Procedure sp_GetUnderperformingProducts(?, ?)
+        const [rows] = await pool.query(
+            "CALL sp_GetUnderperformingProducts(?, ?)", 
+            [minCancel, maxRate]
+        );
+        
+        // Rows trả về từ CALL thường có dạng [data, metadata], lấy phần tử đầu tiên
+        productList = rows[0];
+
+    } catch (err) {
+        errors.push(err.message);
+    }
+
+    // 4. Render ra view ejs (cần tạo file views/products.ejs)
+    res.render("products", { 
+        products: productList, 
+        filters: { minCancel, maxRate },
+        errors: errors
+    });
+});
+
+// DELETE: Xóa sản phẩm
+app.delete("/products/delete/:id", async (req, res) => {
+    // API trả về JSON để Client (Frontend) xử lý qua Fetch/AJAX
+    if (!res.locals.user) {
+        return res.status(401).json({ ok: false, message: "Unauthorized" });
+    }
+
+    const productId = req.params.id;
+
+    try {
+        // Thực hiện xóa trực tiếp hoặc gọi SP nếu có
+        const [result] = await pool.query("DELETE FROM Product WHERE ProductID = ?", [productId]);
+
+        if (result.affectedRows > 0) {
+            return res.json({ ok: true, message: "Xóa thành công!" });
+        } else {
+            return res.status(404).json({ ok: false, message: "Không tìm thấy sản phẩm." });
+        }
+    } catch (err) {
+        // Bắt lỗi ràng buộc khóa ngoại (ví dụ: SP đang có trong đơn hàng)
+        return res.status(500).json({ ok: false, message: err.message });
+    }
+});
+
+
+// ============================================================
+// PHẦN 3.3: GIAO DIỆN BÁO CÁO DOANH THU (Gọi Hàm)
+// ============================================================
+
+// GET: Hiển thị form và kết quả tính toán
+app.get("/reports/revenue", async (req, res) => {
+    if (!res.locals.user) {
+        return res.redirect("/login");
+    }
+
+    const { shopId, month, year } = req.query;
+    let revenueResult = null;
+    let errors = [];
+    let message = null;
+
+    // Chỉ thực hiện query nếu người dùng đã submit form (có đủ tham số)
+    if (shopId && month && year) {
+        try {
+            // Gọi FUNCTION trong MySQL thông qua SELECT
+            const query = "SELECT fn_TinhDoanhThuShop(?, ?, ?) AS Revenue";
+            const [rows] = await pool.query(query, [shopId, month, year]);
+
+            // Lấy kết quả
+            const rawValue = parseFloat(rows[0].Revenue);
+
+            // Xử lý các mã lỗi logic trả về từ hàm SQL (-1, -2)
+            if (rawValue === -1) {
+                errors.push("Lỗi: ShopID không tồn tại.");
+            } else if (rawValue === -2) {
+                errors.push("Lỗi: Thời gian (Tháng/Năm) không hợp lệ.");
+            } else {
+                // Format tiền tệ VNĐ
+                revenueResult = new Intl.NumberFormat('vi-VN', { 
+                    style: 'currency', 
+                    currency: 'VND' 
+                }).format(rawValue);
+            }
+
+        } catch (err) {
+            errors.push(err.message);
+        }
+    }
+
+    res.render("revenue", {
+        result: revenueResult,
+        params: { shopId, month, year },
+        errors: errors
+    });
+});
+
 app.listen(3000)
