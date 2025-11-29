@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo cáo doanh thu</title>
+    <link rel="stylesheet" href="/home.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Báo cáo doanh thu Shop</h1>
+            <nav>
+                <a href="/">Trang chủ</a>
+                <a href="/products/underperforming">Sản phẩm yếu thế</a>
+                <% if (user) { %>
+                    <a href="/profile">Hồ sơ</a>
+                    <a href="/logout">Đăng xuất</a>
+                <% } else { %>
+                    <a href="/login">Đăng nhập</a>
+                <% } %>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Form nhập thông tin -->
+            <section class="revenue-form">
+                <h2>Tính doanh thu Shop</h2>
+                <form method="GET" action="/reports/revenue">
+                    <div class="form-group">
+                        <label for="shopId">Mã Shop (ShopID):</label>
+                        <input type="number" id="shopId" name="shopId" 
+                               value="<%= params.shopId || '' %>" 
+                               placeholder="Nhập ShopID" min="1" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="month">Tháng:</label>
+                        <input type="number" id="month" name="month" 
+                               value="<%= params.month || '' %>" 
+                               placeholder="1-12" min="1" max="12" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="year">Năm:</label>
+                        <input type="number" id="year" name="year" 
+                               value="<%= params.year || new Date().getFullYear() %>" 
+                               placeholder="Ví dụ: 2025" min="2000" max="2100" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Tính doanh thu</button>
+                </form>
+            </section>
+
+            <!-- Hiển thị lỗi -->
+            <% if (errors.length > 0) { %>
+                <div class="errors">
+                    <% errors.forEach(error => { %>
+                        <p class="error"><%= error %></p>
+                    <% }) %>
+                </div>
+            <% } %>
+
+            <!-- Hiển thị kết quả -->
+            <% if (result !== null) { %>
+                <section class="result-display">
+                    <h2>Kết quả</h2>
+                    <div class="result-box">
+                        <p><strong>Shop ID:</strong> <%= params.shopId %></p>
+                        <p><strong>Tháng/Năm:</strong> <%= params.month %>/<%= params.year %></p>
+                        <p class="revenue-amount">
+                            <strong>Tổng doanh thu:</strong> 
+                            <span class="highlight"><%= result %></span>
+                        </p>
+                    </div>
+                </section>
+            <% } %>
+
+            <!-- Hướng dẫn -->
+            <section class="instructions">
+                <h3>📌 Hướng dẫn</h3>
+                <ul>
+                    <li>Nhập <strong>ShopID</strong> hợp lệ (xem trong bảng Shop)</li>
+                    <li>Chọn <strong>tháng</strong> (1-12) và <strong>năm</strong> cần tính doanh thu</li>
+                    <li>Hàm SQL sẽ tính doanh thu từ các đơn hàng đã hoàn thành (Status = 'Completed')</li>
+                    <li>Doanh thu = Tổng (Quantity × UnitPrice) của tất cả OrderItem trong tháng đó</li>
+                </ul>
+
+                <h3>📊 Ví dụ ShopID có sẵn:</h3>
+                <ul>
+                    <li>ShopID = 1: Long Mobile Store</li>
+                    <li>ShopID = 2: Thư Cosmetics & Beauty</li>
+                    <li>ShopID = 3: Huy Computer Parts</li>
+                    <li>ShopID = 4: Trâm Fashion Boutique</li>
+                    <li>ShopID = 5: Toàn Home Accessories</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <style>
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #28a745;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        header nav {
+            margin-top: 10px;
+        }
+
+        header nav a {
+            color: white;
+            margin-right: 15px;
+            text-decoration: none;
+        }
+
+        .revenue-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-width: 400px;
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-primary:hover {
+            background: #218838;
+        }
+
+        .errors {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .result-display {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .result-box {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+
+        .result-box p {
+            margin: 10px 0;
+            font-size: 16px;
+        }
+
+        .revenue-amount {
+            font-size: 20px;
+            margin-top: 15px;
+        }
+
+        .highlight {
+            color: #28a745;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+    </style>
+</body>
+</html>

@@ -1,31 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HomePage</title>
-    <link rel="stylesheet" href="/css/home.css">
+    <title>Trang chủ - Database BTL3</title>
+    <link rel="stylesheet" href="/home.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .navbar {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+        
+        nav a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        nav a:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 3rem auto;
+            padding: 0 2rem;
+        }
+        
+        .welcome-section {
+            text-align: center;
+            color: white;
+            margin: 3rem 0;
+        }
+        
+        .welcome-section h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .welcome-section p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card p {
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 1.5rem;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #764ba2;
+        }
+        
+        .user-info {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            text-align: center;
+            margin: 2rem 0;
+        }
+    </style>
 </head>
 <body>
-    <h>Welcome to homepage</h>
+    <div class="navbar">
+        <nav>
+            <ul>
+                <li><a href="/">🏠 Trang chủ</a></li>
+                <% if(user) { %>
+                    <li><a href="/products/underperforming">📊 Sản phẩm yếu thế</a></li>
+                    <li><a href="/reports/revenue">💰 Báo cáo doanh thu</a></li>
+                    <li><a href="/profile">👤 Hồ sơ</a></li>
+                    <li><a href="/logout">🚪 Đăng xuất</a></li>
+                <% } else { %>
+                    <li><a href="/register">📝 Đăng ký</a></li>
+                    <li><a href="/login">🔑 Đăng nhập</a></li>
+                <% } %>
+            </ul>
+        </nav>
+    </div>
+
     <div class="container">
-        <div class="navbar">
-            <nav>
-                <ul>
-                    <% if(user) { %>
-                        <li><a href="/profile">Profile</a></li>
-                        <li><a href="/logout">Logout</a></li>
-                    <% } else { %>
-                        <li><a href="/register">Register</a></li>
-                        <li><a href="/login">Login</a></li>
-                    <% } %>
-                </ul>
-            </nav>
+        <div class="welcome-section">
+            <h1>🛒 Hệ thống E-Commerce</h1>
+            <p>Database Management - BTL3</p>
+            <% if(user) { %>
+                <div class="user-info">
+                    <h3>Chào mừng User ID: <%= user.id %></h3>
+                </div>
+            <% } %>
+        </div>
+
+        <div class="features">
+            <div class="feature-card">
+                <h3>📊 Tìm kiếm sản phẩm yếu thế</h3>
+                <p>Phân tích sản phẩm có nhiều đơn hủy và đánh giá thấp. Sử dụng Stored Procedure để truy vấn dữ liệu từ nhiều bảng.</p>
+                <% if(user) { %>
+                    <a href="/products/underperforming" class="btn">Xem ngay →</a>
+                <% } else { %>
+                    <a href="/login" class="btn">Đăng nhập để sử dụng →</a>
+                <% } %>
+            </div>
+
+            <div class="feature-card">
+                <h3>💰 Báo cáo doanh thu Shop</h3>
+                <p>Tính toán doanh thu của Shop theo tháng/năm. Sử dụng Function với CURSOR và LOOP để xử lý dữ liệu.</p>
+                <% if(user) { %>
+                    <a href="/reports/revenue" class="btn">Tính doanh thu →</a>
+                <% } else { %>
+                    <a href="/login" class="btn">Đăng nhập để sử dụng →</a>
+                <% } %>
+            </div>
+
+            <div class="feature-card">
+                <h3>👤 Quản lý tài khoản</h3>
+                <p>Đăng ký, đăng nhập, cập nhật thông tin cá nhân. Sử dụng Stored Procedure với validation đầy đủ.</p>
+                <% if(user) { %>
+                    <a href="/profile" class="btn">Xem hồ sơ →</a>
+                <% } else { %>
+                    <a href="/register" class="btn">Đăng ký ngay →</a>
+                <% } %>
+            </div>
+        </div>
+
+        <div style="text-align: center; color: white; margin-top: 3rem; opacity: 0.8;">
+            <p>✅ 24 Tables • 7 Procedures • 8 Triggers • 2 Functions</p>
+            <p>🐳 Powered by Docker + MySQL + Node.js</p>
         </div>
     </div>
-    <% if(user) { %>
-    <p>Hello <%= user.id %></p>
-    <% } %>
-    
 </body>
 </html>

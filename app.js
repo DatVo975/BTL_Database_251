@@ -7,10 +7,11 @@ const bcrypt = require("bcrypt")
 
 const app = express()
 const pool = mysql.createPool({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "btl2_db",
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "btl2_db",
+  charset: "utf8mb4"
 });
 app.set("view engine", "ejs")
 app.use(express.urlencoded({extended: false}))
@@ -76,10 +77,12 @@ app.get("/profile", async (req, res) => {
 // ============================================================
 app.post("/login", async (req, res) => {
     const { email, password } = req.body;
+    const errors = [];
   
     const [rows] = await pool.query("SELECT UserID, PasswordHash FROM Useraccount WHERE Email = ?", [email]);
     if (rows.length === 0) {
-        return res.status(400).send("Incorrect email or password");
+        errors.push("Email hoặc mật khẩu không đúng");
+        return res.status(400).render("login", { errors });
     }
 
     const user = rows[0];
@@ -87,7 +90,8 @@ app.post("/login", async (req, res) => {
     const isMatch = bcrypt.compareSync(password, user.PasswordHash);
 
     if (!isMatch) {
-        return res.status(400).send("Incorrect email or password");
+        errors.push("Email hoặc mật khẩu không đúng");
+        return res.status(400).render("login", { errors });
     }
     
     if (user) {
@@ -180,9 +184,9 @@ app.delete("/user/delete", async (req, res) => {
         } else {
             errors.push(err.message);
         }
-        return res.status(500).render("profile", { errors, userData });
+        return res.status(500).render("profile", { errors, userData: null });
     }
-})
+});
 
 // ============================================================
 // PHẦN 3.2: GIAO DIỆN DANH SÁCH SẢN PHẨM (Tìm kiếm & Xóa)
@@ -217,11 +221,28 @@ app.get("/products/underperforming", async (req, res) => {
         errors.push(err.message);
     }
 
-    // 4. Render ra view ejs (cần tạo file views/products.ejs)
+    // 4. Kiểm tra role của user
+    const userId = res.locals.user.id; // <-- Sửa từ UserID thành id
+    let canDeleteProduct = false;
+
+    try {
+        const [sellerCheck] = await pool.query("SELECT UserID FROM Seller WHERE UserID = ?", [userId]);
+        const [adminCheck] = await pool.query("SELECT AdminID FROM Adminaccount WHERE AdminID = ?", [userId]);
+        
+        console.log(`DEBUG: UserID=${userId}, isSeller=${sellerCheck.length > 0}, isAdmin=${adminCheck.length > 0}`);
+        
+        canDeleteProduct = sellerCheck.length > 0 || adminCheck.length > 0;
+    } catch (err) {
+        console.error('Error checking role:', err);
+        // Ignore error, default canDeleteProduct = false
+    }
+
+    // 5. Render ra view ejs
     res.render("products", { 
         products: productList, 
         filters: { minCancel, maxRate },
-        errors: errors
+        errors: errors,
+        canDeleteProduct: canDeleteProduct
     });
 });
 
@@ -233,18 +254,65 @@ app.delete("/products/delete/:id", async (req, res) => {
     }
 
     const productId = req.params.id;
+    const userId = res.locals.user.id; // <-- Sửa từ UserID thành id
 
     try {
-        // Thực hiện xóa trực tiếp hoặc gọi SP nếu có
-        const [result] = await pool.query("DELETE FROM Product WHERE ProductID = ?", [productId]);
+        // Kiểm tra quyền: User phải là Seller hoặc Admin
+        const [sellerCheck] = await pool.query(
+            "SELECT UserID FROM Seller WHERE UserID = ?",
+            [userId]
+        );
+        
+        const [adminCheck] = await pool.query(
+            "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
+            [userId]
+        );
 
-        if (result.affectedRows > 0) {
-            return res.json({ ok: true, message: "Xóa thành công!" });
+        const isSeller = sellerCheck.length > 0;
+        const isAdmin = adminCheck.length > 0;
+
+        // Nếu không phải Seller hoặc Admin
+        if (!isSeller && !isAdmin) {
+            return res.status(403).json({ 
+                ok: false, 
+                message: "Bạn không có quyền xóa sản phẩm. Chỉ Seller hoặc Admin mới được phép." 
+            });
+        }
+
+        // Nếu là Seller, kiểm tra sản phẩm có thuộc shop của họ không
+        if (isSeller && !isAdmin) {
+            const [productCheck] = await pool.query(
+                `SELECT p.ProductID 
+                 FROM Product p
+                 JOIN Shop s ON p.ShopID = s.ShopID
+                 WHERE p.ProductID = ? AND s.SellerID = ?`,
+                [productId, userId]
+            );
+
+            if (productCheck.length === 0) {
+                return res.status(403).json({ 
+                    ok: false, 
+                    message: "Bạn chỉ có thể xóa sản phẩm của shop mình." 
+                });
+            }
+        }
+
+        // Gọi stored procedure sp_DeleteProduct với OUT parameters
+        const [rows] = await pool.query(
+            "CALL sp_DeleteProduct(?, @errorCode, @errorMessage)",
+            [productId]
+        );
+
+        // Lấy OUT parameters
+        const [results] = await pool.query("SELECT @errorCode AS errorCode, @errorMessage AS errorMessage");
+        const { errorCode, errorMessage } = results[0];
+
+        if (errorCode === 0) {
+            return res.json({ ok: true, message: "Xóa sản phẩm thành công!" });
         } else {
-            return res.status(404).json({ ok: false, message: "Không tìm thấy sản phẩm." });
+            return res.status(400).json({ ok: false, message: errorMessage });
         }
     } catch (err) {
-        // Bắt lỗi ràng buộc khóa ngoại (ví dụ: SP đang có trong đơn hàng)
         return res.status(500).json({ ok: false, message: err.message });
     }
 });

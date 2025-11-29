@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sản phẩm yếu thế</title>
+    <link rel="stylesheet" href="/home.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Danh sách sản phẩm yếu thế</h1>
+            <nav>
+                <a href="/">Trang chủ</a>
+                <a href="/reports/revenue">Báo cáo doanh thu</a>
+                <% if (user) { %>
+                    <a href="/profile">Hồ sơ</a>
+                    <a href="/logout">Đăng xuất</a>
+                <% } else { %>
+                    <a href="/login">Đăng nhập</a>
+                <% } %>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Form tìm kiếm -->
+            <section class="search-form">
+                <h2>Tìm kiếm sản phẩm</h2>
+                <form method="GET" action="/products/underperforming">
+                    <div class="form-group">
+                        <label for="minCancel">Số đơn hủy tối thiểu:</label>
+                        <input type="number" id="minCancel" name="minCancel" 
+                               value="<%= filters.minCancel %>" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="maxRate">Đánh giá tối đa (1-5 sao):</label>
+                        <input type="number" id="maxRate" name="maxRate" 
+                               value="<%= filters.maxRate %>" min="1" max="5" step="0.1" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Tìm kiếm</button>
+                </form>
+            </section>
+
+            <!-- Hiển thị lỗi -->
+            <% if (errors.length > 0) { %>
+                <div class="errors">
+                    <% errors.forEach(error => { %>
+                        <p class="error"><%= error %></p>
+                    <% }) %>
+                </div>
+            <% } %>
+
+            <!-- Bảng kết quả -->
+            <section class="results">
+                <h2>Kết quả (<%= products.length %> sản phẩm)</h2>
+                
+                <% if (products.length > 0) { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Tên sản phẩm</th>
+                                <th>Đơn hàng bị hủy</th>
+                                <th>Đánh giá TB</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% products.forEach(product => { %>
+                                <tr id="product-<%= product.ProductID %>">
+                                    <td><%= product.ProductID %></td>
+                                    <td><%= product.ProductName %></td>
+                                    <td><%= product.TotalCancelledOrders %></td>
+                                    <td><%= product.AverageRating ? Number(product.AverageRating).toFixed(1) : 'N/A' %></td>
+                                    <td>
+                                        <% if (canDeleteProduct) { %>
+                                            <button class="btn-delete" data-product-id="<%= product.ProductID %>">
+                                                Xóa
+                                            </button>
+                                        <% } else { %>
+                                            <span style="color: #999;">Không có quyền</span>
+                                        <% } %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                <% } else { %>
+                    <p>Không tìm thấy sản phẩm nào phù hợp.</p>
+                <% } %>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Event delegation for delete buttons
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelector('tbody')?.addEventListener('click', function(e) {
+                if (e.target.classList.contains('btn-delete') || e.target.closest('.btn-delete')) {
+                    const button = e.target.closest('.btn-delete');
+                    const productId = button.getAttribute('data-product-id');
+                    deleteProduct(productId);
+                }
+            });
+        });
+
+        async function deleteProduct(productId) {
+            if (!confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/products/delete/${productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.ok) {
+                    alert('Xóa sản phẩm thành công!');
+                    // Xóa dòng khỏi bảng
+                    document.getElementById(`product-${productId}`).remove();
+                } else {
+                    alert(`Lỗi: ${result.message}`);
+                }
+            } catch (err) {
+                alert(`Lỗi kết nối: ${err.message}`);
+            }
+        }
+    </script>
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: #007bff;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        header nav {
+            margin-top: 10px;
+        }
+
+        header nav a {
+            color: white;
+            margin-right: 15px;
+            text-decoration: none;
+        }
+
+        .search-form {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-width: 300px;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn-delete:hover {
+            background: #c82333;
+        }
+
+        .errors {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+    </style>
+</body>
+</html>
