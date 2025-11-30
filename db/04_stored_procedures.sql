@@ -255,8 +255,8 @@ BEGIN
     GROUP BY
         U.UserID, U.Fullname, U.Email, B.BonusPoint
     HAVING
-        -- Chỉ hiển thị người mua >= p_MinAddresses
-        COUNT(A.AddressID) > p_MinAddresses
+        -- Chỉ hiển thị người mua có số địa chỉ >= p_MinAddresses
+        COUNT(A.AddressID) >= p_MinAddresses
     ORDER BY
         B.BonusPoint DESC, TotalAddresses DESC; -- Ưu tiên người có điểm cao nhất
 END//

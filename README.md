@@ -189,9 +189,10 @@ cat db/07_test_demo.sql | docker exec -i btl3_mysql mysql -uroot btl2_db
 
 ## 🧪 Test Account
 
+### Tài khoản Admin
 ```
-Email: buyer1@gmail.com
-Password: password123
+Email: admin1@gmail.com
+Password: siu
 ```
 
 ## ⚙️ Cấu hình Docker

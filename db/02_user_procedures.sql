@@ -115,32 +115,62 @@ BEGIN
             SET MESSAGE_TEXT = 'User không tồn tại!';
     END IF;
 
-    -- Không thể xóa nếu User đang là Seller hoặc Buyer hoặc Admin
+    -- Không thể xóa nếu User đang là Seller (có Shop đang hoạt động)
     IF EXISTS (SELECT 1 FROM Seller WHERE UserID = pUserID) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Không thể xóa: User đang là Seller!';
     END IF;
-	
-    IF EXISTS (SELECT 1 FROM Buyer WHERE UserID = pUserID) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Không thể xóa: User đang là Buyer!';
-    END IF;
-
-    IF EXISTS (SELECT 1 FROM Address WHERE BuyerID = pUserID) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Không thể xóa: User này có địa chỉ giao hàng.';
-    END IF;
     
-	IF EXISTS (SELECT 1 FROM ReportTicket WHERE UserID = pUserID) THEN
-        SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Không thể xóa: User này có phiếu báo cáo.';
-    END IF;
-    
+    -- Không thể xóa nếu User là Admin
     IF EXISTS (SELECT 1 FROM Adminaccount WHERE AdminID = pUserID) THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Không thể xóa: User đang là Admin!';
     END IF;
 
+    -- Nếu là Buyer, xóa cascade các dữ liệu liên quan
+    IF EXISTS (SELECT 1 FROM Buyer WHERE UserID = pUserID) THEN
+        -- Xóa Review (phụ thuộc OrderItem) - PHẢI XÓA TRƯỚC vì không có CASCADE
+        DELETE r FROM Review r
+        JOIN OrderItem oi ON r.ItemID = oi.ItemID
+        JOIN `Order` o ON oi.OrderID = o.OrderID
+        WHERE o.BuyerID = pUserID;
+        
+        -- Xóa ApplyVoucher (phụ thuộc Order)
+        DELETE av FROM ApplyVoucher av
+        JOIN `Order` o ON av.OrderID = o.OrderID
+        WHERE o.BuyerID = pUserID;
+        
+        -- Xóa Payment (phụ thuộc Order)
+        DELETE p FROM Payment p
+        JOIN `Order` o ON p.OrderID = o.OrderID
+        WHERE o.BuyerID = pUserID;
+        
+        -- XÓA ORDER TRƯỚC - OrderItem sẽ tự động cascade delete mà KHÔNG trigger conflict!
+        DELETE FROM `Order` WHERE BuyerID = pUserID;
+        
+        -- Xóa Address
+        DELETE FROM Address WHERE BuyerID = pUserID;
+        
+        -- Xóa CartItem
+        DELETE FROM CartItem WHERE BuyerID = pUserID;
+        
+        -- Xóa ParticipationEvent
+        DELETE FROM ParticipationEvent WHERE BuyerID = pUserID;
+        
+        -- Xóa ShopFollower (Buyer theo dõi các Shop)
+        DELETE FROM ShopFollower WHERE BuyerID = pUserID;
+        
+        -- Xóa VoucherOfBuyer (Voucher mà Buyer sở hữu)
+        DELETE FROM VoucherOfBuyer WHERE BuyerID = pUserID;
+        
+        -- Xóa ReportTicket
+        DELETE FROM ReportTicket WHERE UserID = pUserID;
+        
+        -- Xóa Buyer
+        DELETE FROM Buyer WHERE UserID = pUserID;
+    END IF;
+
+    -- Cuối cùng xóa User
     DELETE FROM Useraccount WHERE UserID = pUserID;
 END//
 

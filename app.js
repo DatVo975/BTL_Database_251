@@ -60,16 +60,45 @@ app.get("/profile", async (req, res) => {
     if (!res.locals.user || !res.locals.user.id) {
         return res.redirect("/login");
     }
+    
     try {
-        const [rows] = await pool.query(
-            "SELECT Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?", 
+        // Kiểm tra xem có phải Admin đang xem profile của user khác không
+        const targetUserId = req.query.userId || res.locals.user.id;
+        const isViewingOtherUser = targetUserId != res.locals.user.id;
+        
+        // Kiểm tra quyền Admin
+        let isAdmin = false;
+        const [adminCheck] = await pool.query(
+            "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
             [res.locals.user.id]
         );
+        isAdmin = adminCheck.length > 0;
+        
+        // Nếu không phải Admin mà cố xem profile người khác → từ chối
+        if (isViewingOtherUser && !isAdmin) {
+            res.locals.errors.push("Bạn không có quyền xem thông tin người dùng này!");
+            return res.redirect("/profile");
+        }
+        
+        const [rows] = await pool.query(
+            "SELECT UserID, Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?", 
+            [targetUserId]
+        );
         const userData = rows[0] || null;
-        res.render("profile", { userData });
+        
+        if (!userData) {
+            res.locals.errors.push("Không tìm thấy người dùng!");
+            return res.redirect("/buyers");
+        }
+        
+        res.render("profile", { 
+            userData, 
+            isAdmin,
+            isViewingOtherUser 
+        });
     } catch (err) {
         res.locals.errors.push(err.message);
-        res.render("profile", { userData: null });
+        res.render("profile", { userData: null, isAdmin: false, isViewingOtherUser: false });
     }
 })
 // ============================================================
@@ -134,38 +163,91 @@ app.post("/register", async (req, res) => {
 
 app.post("/user/update", async (req, res) => {
     const errors = [];
-    const { fullname, email, sex, phonenum, dob } = req.body;
+    const { fullname, email, sex, phonenum, dob, userId } = req.body;
     
     if (!res.locals.user || !res.locals.user.id) {
         return res.redirect("/login");
     }
 
     try {
+        // Xác định user nào sẽ được update
+        let targetUserId = res.locals.user.id;
+        let isUpdatingOtherUser = false;
+        
+        // Nếu có userId trong body (Admin đang update user khác)
+        if (userId && userId != res.locals.user.id) {
+            // Kiểm tra quyền Admin
+            const [adminCheck] = await pool.query(
+                "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
+                [res.locals.user.id]
+            );
+            
+            if (adminCheck.length === 0) {
+                errors.push("Bạn không có quyền sửa thông tin người dùng khác!");
+                return res.redirect("/profile");
+            }
+            
+            targetUserId = userId;
+            isUpdatingOtherUser = true;
+        }
+        
         await pool.query(
             "CALL sp_UpdateUser (?, ?, ?, ?, ?, ?)",
-            [res.locals.user.id, fullname, email, sex, phonenum, dob]
+            [targetUserId, fullname, email, sex, phonenum, dob]
         );
+        
+        // Nếu Admin sửa user khác, redirect về buyers list
+        if (isUpdatingOtherUser) {
+            return res.redirect("/buyers");
+        }
+        
         // Re-fetch updated row to confirm changes and render immediately
         const [rows] = await pool.query(
-            "SELECT Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?",
-            [res.locals.user.id]
+            "SELECT UserID, Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?",
+            [targetUserId]
         );
         const userData = rows[0] || null;
-        return res.render("profile", { errors: [], userData });
+        
+        // Kiểm tra isAdmin cho render
+        const [adminCheck] = await pool.query(
+            "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
+            [res.locals.user.id]
+        );
+        const isAdmin = adminCheck.length > 0;
+        
+        return res.render("profile", { 
+            errors: [], 
+            userData, 
+            isAdmin,
+            isViewingOtherUser: isUpdatingOtherUser 
+        });
     } catch (err) {
         errors.push(err.sqlState === "45000" ? err.message : err.message);
         // try to fetch current data for display
         let userData = null;
+        let isAdmin = false;
         try {
+            const targetUserId = userId || res.locals.user.id;
             const [rows] = await pool.query(
-                "SELECT Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?",
-                [res.locals.user.id]
+                "SELECT UserID, Fullname, Email, Sex, PhoneNumber, DoB FROM Useraccount WHERE UserID = ?",
+                [targetUserId]
             );
             userData = rows[0] || null;
+            
+            const [adminCheck] = await pool.query(
+                "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
+                [res.locals.user.id]
+            );
+            isAdmin = adminCheck.length > 0;
         } catch (e) {
             console.error("Failed to fetch user after update error:", e);
         }
-        return res.render("profile", { errors, userData });
+        return res.render("profile", { 
+            errors, 
+            userData, 
+            isAdmin,
+            isViewingOtherUser: userId && userId != res.locals.user.id 
+        });
     }
 })
 
@@ -189,134 +271,149 @@ app.delete("/user/delete", async (req, res) => {
 });
 
 // ============================================================
-// PHẦN 3.2: GIAO DIỆN DANH SÁCH SẢN PHẨM (Tìm kiếm & Xóa)
+// PHẦN 3.2: GIAO DIỆN DANH SÁCH NGƯỜI DÙNG (Tìm kiếm & Xóa)
 // ============================================================
 
 // GET: Hiển thị giao diện và danh sách tìm kiếm
-app.get("/products/underperforming", async (req, res) => {
-    // 1. Kiểm tra đăng nhập (nếu cần bảo mật)
+// ============================================================
+// PHẦN 3.2 BỔ SUNG: GIAO DIỆN QUẢN LÝ BUYERS (Gọi thủ tục SELECT)
+// ============================================================
+
+// GET: Hiển thị danh sách Buyers VIP
+app.get("/buyers", async (req, res) => {
     if (!res.locals.user) {
         return res.redirect("/login");
     }
 
-    // 2. Lấy tham số từ URL (Query String)
-    // Mặc định: minCancel = 0, maxRate = 5.0 nếu người dùng chưa nhập
-    const minCancel = req.query.minCancel || 0;
-    const maxRate = req.query.maxRate || 5.0;
-    
-    let productList = [];
+    const { minBonusPoint = 150, minAddresses = 1, search = '' } = req.query;
+    let buyersList = [];
     let errors = [];
 
     try {
-        // 3. Gọi Stored Procedure sp_GetUnderperformingProducts(?, ?)
+        // Gọi stored procedure sp_GetHighValueBuyersWithAddresses
         const [rows] = await pool.query(
-            "CALL sp_GetUnderperformingProducts(?, ?)", 
-            [minCancel, maxRate]
+            "CALL sp_GetHighValueBuyersWithAddresses(?, ?)",
+            [parseInt(minBonusPoint), parseInt(minAddresses)]
         );
-        
-        // Rows trả về từ CALL thường có dạng [data, metadata], lấy phần tử đầu tiên
-        productList = rows[0];
+
+        buyersList = rows[0]; // Kết quả từ stored procedure
+
+        // Filter theo search (tìm kiếm theo tên hoặc email)
+        if (search.trim() !== '') {
+            buyersList = buyersList.filter(buyer => 
+                buyer.Fullname.toLowerCase().includes(search.toLowerCase()) ||
+                buyer.Email.toLowerCase().includes(search.toLowerCase())
+            );
+        }
 
     } catch (err) {
         errors.push(err.message);
     }
 
-    // 4. Kiểm tra role của user
-    const userId = res.locals.user.id; // <-- Sửa từ UserID thành id
-    let canDeleteProduct = false;
-
+    // Kiểm tra quyền Admin
+    let isAdmin = false;
     try {
-        const [sellerCheck] = await pool.query("SELECT UserID FROM Seller WHERE UserID = ?", [userId]);
+        const userId = res.locals.user.id;
         const [adminCheck] = await pool.query("SELECT AdminID FROM Adminaccount WHERE AdminID = ?", [userId]);
-        
-        console.log(`DEBUG: UserID=${userId}, isSeller=${sellerCheck.length > 0}, isAdmin=${adminCheck.length > 0}`);
-        
-        canDeleteProduct = sellerCheck.length > 0 || adminCheck.length > 0;
+        isAdmin = adminCheck.length > 0;
     } catch (err) {
-        console.error('Error checking role:', err);
-        // Ignore error, default canDeleteProduct = false
+        console.error('Error checking admin role:', err);
     }
 
-    // 5. Render ra view ejs
-    res.render("products", { 
-        products: productList, 
-        filters: { minCancel, maxRate },
+    res.render("buyers", { 
+        buyers: buyersList, 
+        filters: { minBonusPoint, minAddresses, search },
         errors: errors,
-        canDeleteProduct: canDeleteProduct
+        isAdmin: isAdmin
     });
 });
 
-// DELETE: Xóa sản phẩm
-app.delete("/products/delete/:id", async (req, res) => {
-    // API trả về JSON để Client (Frontend) xử lý qua Fetch/AJAX
+// DELETE: Xóa Buyer (chỉ Admin)
+app.delete("/buyers/delete/:id", async (req, res) => {
     if (!res.locals.user) {
         return res.status(401).json({ ok: false, message: "Unauthorized" });
     }
 
-    const productId = req.params.id;
-    const userId = res.locals.user.id; // <-- Sửa từ UserID thành id
+    const buyerId = req.params.id;
+    const userId = res.locals.user.id;
 
     try {
-        // Kiểm tra quyền: User phải là Seller hoặc Admin
-        const [sellerCheck] = await pool.query(
-            "SELECT UserID FROM Seller WHERE UserID = ?",
-            [userId]
-        );
-        
+        // Kiểm tra quyền Admin
         const [adminCheck] = await pool.query(
             "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
             [userId]
         );
 
-        const isSeller = sellerCheck.length > 0;
-        const isAdmin = adminCheck.length > 0;
-
-        // Nếu không phải Seller hoặc Admin
-        if (!isSeller && !isAdmin) {
+        if (adminCheck.length === 0) {
             return res.status(403).json({ 
                 ok: false, 
-                message: "Bạn không có quyền xóa sản phẩm. Chỉ Seller hoặc Admin mới được phép." 
+                message: "Chỉ Admin mới có quyền xóa người dùng." 
             });
         }
 
-        // Nếu là Seller, kiểm tra sản phẩm có thuộc shop của họ không
-        if (isSeller && !isAdmin) {
-            const [productCheck] = await pool.query(
-                `SELECT p.ProductID 
-                 FROM Product p
-                 JOIN Shop s ON p.ShopID = s.ShopID
-                 WHERE p.ProductID = ? AND s.SellerID = ?`,
-                [productId, userId]
-            );
-
-            if (productCheck.length === 0) {
-                return res.status(403).json({ 
-                    ok: false, 
-                    message: "Bạn chỉ có thể xóa sản phẩm của shop mình." 
-                });
-            }
-        }
-
-        // Gọi stored procedure sp_DeleteProduct với OUT parameters
-        const [rows] = await pool.query(
-            "CALL sp_DeleteProduct(?, @errorCode, @errorMessage)",
-            [productId]
-        );
-
-        // Lấy OUT parameters
-        const [results] = await pool.query("SELECT @errorCode AS errorCode, @errorMessage AS errorMessage");
-        const { errorCode, errorMessage } = results[0];
-
-        if (errorCode === 0) {
-            return res.json({ ok: true, message: "Xóa sản phẩm thành công!" });
-        } else {
-            return res.status(400).json({ ok: false, message: errorMessage });
-        }
+        // Gọi stored procedure sp_DeleteUser (chỉ có 1 tham số IN, không có OUT)
+        await pool.query("CALL sp_DeleteUser(?)", [buyerId]);
+        
+        return res.json({ ok: true, message: "Xóa người dùng thành công!" });
+        
     } catch (err) {
+        // Lỗi từ SIGNAL SQLSTATE '45000' sẽ có trong err.message
         return res.status(500).json({ ok: false, message: err.message });
     }
 });
 
+// PUT: Cập nhật điểm thưởng của Buyer (chỉ Admin)
+app.put("/buyers/update-points/:id", express.json(), async (req, res) => {
+    if (!res.locals.user) {
+        return res.status(401).json({ ok: false, message: "Unauthorized" });
+    }
+
+    const buyerId = req.params.id;
+    const userId = res.locals.user.id;
+    const { bonusPoint } = req.body;
+
+    try {
+        // Kiểm tra quyền Admin
+        const [adminCheck] = await pool.query(
+            "SELECT AdminID FROM Adminaccount WHERE AdminID = ?",
+            [userId]
+        );
+
+        if (adminCheck.length === 0) {
+            return res.status(403).json({ 
+                ok: false, 
+                message: "Chỉ Admin mới có quyền cập nhật điểm thưởng." 
+            });
+        }
+
+        // Kiểm tra Buyer có tồn tại không
+        const [buyerCheck] = await pool.query(
+            "SELECT UserID FROM Buyer WHERE UserID = ?",
+            [buyerId]
+        );
+
+        if (buyerCheck.length === 0) {
+            return res.status(404).json({ 
+                ok: false, 
+                message: "Không tìm thấy Buyer này." 
+            });
+        }
+
+        // Cập nhật điểm thưởng
+        await pool.query(
+            "UPDATE Buyer SET BonusPoint = ? WHERE UserID = ?",
+            [bonusPoint, buyerId]
+        );
+        
+        return res.json({ 
+            ok: true, 
+            message: `Cập nhật điểm thưởng thành công! Điểm mới: ${bonusPoint}` 
+        });
+        
+    } catch (err) {
+        return res.status(500).json({ ok: false, message: err.message });
+    }
+});
 
 // ============================================================
 // PHẦN 3.3: GIAO DIỆN BÁO CÁO DOANH THU (Gọi Hàm)

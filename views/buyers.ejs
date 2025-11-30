@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Buyers VIP - Database BTL3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 2.5rem;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        
+        .error {
+            background: #fff3f3;
+            color: #d63031;
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            border-left: 4px solid #d63031;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .error::before {
+            content: "⚠️";
+            font-size: 1.2rem;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+        
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        input, select {
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-danger {
+            background: #d63031;
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .badge-gold {
+            background: #ffd700;
+            color: #333;
+        }
+        
+        .badge-silver {
+            background: #c0c0c0;
+            color: #333;
+        }
+        
+        .badge-bronze {
+            background: #cd7f32;
+            color: white;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .nav-links {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .nav-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            margin: 0 1rem;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #999;
+        }
+        
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            opacity: 0.5;
+            margin-bottom: 1rem;
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .modal-header h2 {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 0;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close:hover,
+        .close:focus {
+            color: #000;
+        }
+        
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-box p {
+            margin: 0.5rem 0;
+            color: #555;
+        }
+        
+        .info-box strong {
+            color: #333;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn-cancel {
+            background: #6c757d;
+            flex: 1;
+        }
+        
+        .btn-cancel:hover {
+            background: #5a6268;
+        }
+        
+        .btn-submit {
+            flex: 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>👥 Quản lý Buyers VIP</h1>
+        <p class="subtitle">Danh sách người mua có điểm thưởng cao và nhiều địa chỉ</p>
+        
+        <% if (errors.length > 0) { %>
+            <% errors.forEach(error => { %>
+                <div class="error"><%= error %></div>
+            <% }) %>
+        <% } %>
+        
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <form method="GET" action="/buyers">
+                <div class="filter-grid">
+                    <div class="form-group">
+                        <label for="minBonusPoint">Điểm thưởng tối thiểu</label>
+                        <input type="number" id="minBonusPoint" name="minBonusPoint" 
+                               value="<%= filters.minBonusPoint %>" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="minAddresses">Số địa chỉ tối thiểu</label>
+                        <input type="number" id="minAddresses" name="minAddresses" 
+                               value="<%= filters.minAddresses %>" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="search">Tìm kiếm (Tên/Email)</label>
+                        <input type="text" id="search" name="search" 
+                               value="<%= filters.search %>" placeholder="Nhập tên hoặc email...">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">🔍 Lọc & Tìm kiếm</button>
+            </form>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number"><%= buyers.length %></div>
+                <div class="stat-label">Tổng số Buyers VIP</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">
+                    <%= buyers.length > 0 ? Math.round(buyers.reduce((sum, b) => sum + b.BonusPoint, 0) / buyers.length) : 0 %>
+                </div>
+                <div class="stat-label">Điểm TB</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">
+                    <%= buyers.length > 0 ? Math.round(buyers.reduce((sum, b) => sum + b.TotalAddresses, 0) / buyers.length) : 0 %>
+                </div>
+                <div class="stat-label">Địa chỉ TB</div>
+            </div>
+        </div>
+        
+        <!-- Buyers Table -->
+        <% if (buyers.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Họ tên</th>
+                        <th>Email</th>
+                        <th>Điểm thưởng</th>
+                        <th>Hạng</th>
+                        <th>Số địa chỉ</th>
+                        <th>Địa chỉ mới nhất</th>
+                        <% if (isAdmin) { %>
+                            <th>Thao tác</th>
+                        <% } %>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% buyers.forEach(buyer => { %>
+                        <tr data-buyer-id="<%= buyer.UserID %>">
+                            <td><%= buyer.UserID %></td>
+                            <td><strong><%= buyer.Fullname %></strong></td>
+                            <td><%= buyer.Email %></td>
+                            <td><strong><%= buyer.BonusPoint %></strong> điểm</td>
+                            <td>
+                                <% if (buyer.BonusPoint >= 500) { %>
+                                    <span class="badge badge-gold">🏆 VIP Gold</span>
+                                <% } else if (buyer.BonusPoint >= 300) { %>
+                                    <span class="badge badge-silver">🥈 VIP Silver</span>
+                                <% } else { %>
+                                    <span class="badge badge-bronze">🥉 VIP Bronze</span>
+                                <% } %>
+                            </td>
+                            <td><%= buyer.TotalAddresses %> địa chỉ</td>
+                            <td><%= new Date(buyer.LatestAddressDate).toLocaleDateString('vi-VN') %></td>
+                            <% if (isAdmin) { %>
+                                <td>
+                                    <div class="actions">
+                                        <button class="btn btn-primary btn-edit-points" 
+                                                data-user-id="<%= buyer.UserID %>" 
+                                                data-fullname="<%= buyer.Fullname %>"
+                                                data-current-points="<%= buyer.BonusPoint %>"
+                                                style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                            ⭐ Điểm
+                                        </button>
+                                        <a href="/profile?userId=<%= buyer.UserID %>" class="btn btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                            ✏️ Sửa
+                                        </a>
+                                        <button class="btn btn-danger btn-delete" 
+                                                data-user-id="<%= buyer.UserID %>" 
+                                                data-fullname="<%= buyer.Fullname %>">
+                                            🗑️ Xóa
+                                        </button>
+                                    </div>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <h3>Không tìm thấy Buyers VIP</h3>
+                <p>Thử điều chỉnh bộ lọc hoặc tìm kiếm với từ khóa khác</p>
+            </div>
+        <% } %>
+        
+        <div class="nav-links">
+            <a href="/">← Trang chủ</a>
+            <span>|</span>
+            <a href="/reports/revenue">📊 Báo cáo doanh thu</a>
+            <span>|</span>
+            <a href="/profile">👤 Profile</a>
+        </div>
+    </div>
+    
+    <!-- Modal sửa điểm thưởng -->
+    <div id="pointsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⭐ Cập nhật điểm thưởng</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <p><strong>Người dùng:</strong> <span id="modal-fullname"></span></p>
+                    <p><strong>User ID:</strong> <span id="modal-user-id"></span></p>
+                    <p><strong>Điểm hiện tại:</strong> <span id="modal-current-points"></span></p>
+                </div>
+                <form id="pointsForm">
+                    <div class="form-group">
+                        <label for="newPoints">Điểm thưởng mới</label>
+                        <input type="number" id="newPoints" name="newPoints" min="0" step="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" id="cancelBtn">Hủy</button>
+                <button class="btn btn-primary btn-submit" id="submitPointsBtn">💾 Cập nhật</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Gắn event listener cho tất cả nút xóa và sửa điểm
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteButtons = document.querySelectorAll('.btn-delete');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    const fullname = this.getAttribute('data-fullname');
+                    deleteBuyer(userId, fullname);
+                });
+            });
+            
+            // Modal functionality
+            const modal = document.getElementById('pointsModal');
+            const closeBtn = document.querySelector('.close');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const editPointsButtons = document.querySelectorAll('.btn-edit-points');
+            const submitBtn = document.getElementById('submitPointsBtn');
+            
+            editPointsButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    const fullname = this.getAttribute('data-fullname');
+                    const currentPoints = this.getAttribute('data-current-points');
+                    
+                    document.getElementById('modal-fullname').textContent = fullname;
+                    document.getElementById('modal-user-id').textContent = userId;
+                    document.getElementById('modal-current-points').textContent = currentPoints + ' điểm';
+                    document.getElementById('newPoints').value = currentPoints;
+                    
+                    modal.style.display = 'block';
+                });
+            });
+            
+            closeBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            cancelBtn.onclick = function() {
+                modal.style.display = 'none';
+            }
+            
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+            
+            submitBtn.onclick = function() {
+                const userId = document.getElementById('modal-user-id').textContent;
+                const newPoints = document.getElementById('newPoints').value;
+                updateBonusPoints(userId, newPoints);
+            }
+        });
+
+        async function updateBonusPoints(userId, newPoints) {
+            try {
+                const response = await fetch('/buyers/update-points/' + userId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ bonusPoint: newPoints })
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    alert('✅ ' + data.message);
+                    document.getElementById('pointsModal').style.display = 'none';
+                    location.reload();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ Lỗi: ' + error.message);
+            }
+        }
+
+        async function deleteBuyer(userId, fullname) {
+            // Xác nhận lần 1
+            if (!confirm('⚠️ BẠN CHẮC CHẮN MUỐN XÓA NGƯỜI DÙNG NÀY?\n\n' +
+                         'Tên: ' + fullname + '\n' +
+                         'User ID: ' + userId + '\n\n' +
+                         'Thao tác này sẽ xóa TẤT CẢ dữ liệu liên quan:\n' +
+                         '- Tất cả địa chỉ giao hàng\n' +
+                         '- Tất cả đơn hàng và thanh toán\n' +
+                         '- Tất cả đánh giá sản phẩm\n' +
+                         '- Giỏ hàng và voucher\n\n' +
+                         'Click OK để tiếp tục')) {
+                return;
+            }
+            
+            // Xác nhận lần 2 - yêu cầu nhập tên
+            const confirmName = prompt('⚠️ XÁC NHẬN LẦN 2\n\nĐể xác nhận xóa, vui lòng nhập chính xác tên người dùng:\n"' + fullname + '"');
+            
+            if (confirmName !== fullname) {
+                if (confirmName !== null) {  // Chỉ alert nếu user không Cancel
+                    alert('❌ Tên không khớp! Hủy thao tác xóa.');
+                }
+                return;
+            }
+            
+            try {
+                const response = await fetch('/buyers/delete/' + userId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.ok) {
+                    alert('✅ ' + data.message);
+                    // Xóa hàng khỏi bảng
+                    const row = document.querySelector('tr[data-buyer-id="' + userId + '"]');
+                    if (row) {
+                        row.remove();
+                    }
+                    // Reload trang để cập nhật stats
+                    location.reload();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (error) {
+                alert('❌ Lỗi: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
