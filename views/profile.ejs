@@ -152,7 +152,9 @@
             <ul>
                 <li><a href="/">🏠 Trang chủ</a></li>
                 <li><a href="/profile">👤 Thông tin</a></li>
-                <li><a href="/products/underperforming">📊 Sản phẩm yếu thế</a></li>
+                <% if (typeof isAdmin !== 'undefined' && isAdmin) { %>
+                    <li><a href="/buyers">👥 Buyers VIP</a></li>
+                <% } %>
                 <li><a href="/reports/revenue">💰 Doanh thu</a></li>
                 <li><a href="/logout">🚪 Đăng xuất</a></li>
             </ul>
@@ -160,8 +162,20 @@
     </div>
 
     <div class="profile-container">
-        <h1>Thông tin cá nhân</h1>
-        <p class="subtitle">Cập nhật thông tin tài khoản của bạn</p>
+        <h1>
+            <% if (typeof isViewingOtherUser !== 'undefined' && isViewingOtherUser) { %>
+                ✏️ Sửa thông tin Buyer
+            <% } else { %>
+                Thông tin cá nhân
+            <% } %>
+        </h1>
+        <p class="subtitle">
+            <% if (typeof isViewingOtherUser !== 'undefined' && isViewingOtherUser) { %>
+                Cập nhật thông tin cho User ID: <%= userData.UserID %>
+            <% } else { %>
+                Cập nhật thông tin tài khoản của bạn
+            <% } %>
+        </p>
         
         <% errors.forEach(error => { %>
             <div class="error"><%= error %></div>
@@ -169,6 +183,11 @@
 
         <% if (userData) { %>
             <form action="/user/update" method="POST">
+                <!-- Hidden field để gửi userId khi Admin edit user khác -->
+                <% if (typeof isViewingOtherUser !== 'undefined' && isViewingOtherUser) { %>
+                    <input type="hidden" name="userId" value="<%= userData.UserID %>">
+                <% } %>
+                
                 <div class="form-group">
                     <label for="fullname">Họ và tên</label>
                     <input type="text" id="fullname" name="fullname" value="<%= userData.Fullname %>" required>
@@ -202,6 +221,12 @@
                 </div>
                 
                 <button class="btn" type="submit">💾 Cập nhật thông tin</button>
+                
+                <% if (typeof isViewingOtherUser !== 'undefined' && isViewingOtherUser) { %>
+                    <a href="/buyers" style="display: inline-block; text-align: center; width: 100%; margin-top: 1rem; color: #667eea; text-decoration: none; font-weight: 600;">
+                        ← Quay lại danh sách Buyers
+                    </a>
+                <% } %>
             </form>
         <% } else { %>
             <p class="error">Không thể tải thông tin người dùng.</p>

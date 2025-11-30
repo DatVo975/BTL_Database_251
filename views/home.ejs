@@ -127,7 +127,7 @@
             <ul>
                 <li><a href="/">🏠 Trang chủ</a></li>
                 <% if(user) { %>
-                    <li><a href="/products/underperforming">📊 Sản phẩm yếu thế</a></li>
+                    <li><a href="/buyers">👥 Buyers VIP</a></li>
                     <li><a href="/reports/revenue">💰 Báo cáo doanh thu</a></li>
                     <li><a href="/profile">👤 Hồ sơ</a></li>
                     <li><a href="/logout">🚪 Đăng xuất</a></li>
@@ -152,10 +152,10 @@
 
         <div class="features">
             <div class="feature-card">
-                <h3>📊 Tìm kiếm sản phẩm yếu thế</h3>
-                <p>Phân tích sản phẩm có nhiều đơn hủy và đánh giá thấp. Sử dụng Stored Procedure để truy vấn dữ liệu từ nhiều bảng.</p>
+                <h3>👥 Quản lý Buyers VIP</h3>
+                <p>Danh sách người mua có điểm thưởng cao và nhiều địa chỉ. Sử dụng Stored Procedure SELECT với JOIN nhiều bảng.</p>
                 <% if(user) { %>
-                    <a href="/products/underperforming" class="btn">Xem ngay →</a>
+                    <a href="/buyers" class="btn">Xem danh sách →</a>
                 <% } else { %>
                     <a href="/login" class="btn">Đăng nhập để sử dụng →</a>
                 <% } %>
@@ -183,7 +183,7 @@
         </div>
 
         <div style="text-align: center; color: white; margin-top: 3rem; opacity: 0.8;">
-            <p>✅ 24 Tables • 7 Procedures • 8 Triggers • 2 Functions</p>
+            <p>✅ 24 Tables • 6 Procedures • 5 Triggers • 2 Functions</p>
             <p>🐳 Powered by Docker + MySQL + Node.js</p>
         </div>
     </div>
