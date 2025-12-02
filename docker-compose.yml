@@ -10,8 +10,9 @@ services:
       MYSQL_ROOT_PASSWORD: ""
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
       MYSQL_DATABASE: btl2_db
-    ports:
-      - "3307:3306"
+    # Không expose port ra ngoài - chỉ chạy nội bộ trong Docker network
+    # ports:
+    #   - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
